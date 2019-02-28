@@ -1,0 +1,198 @@
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Simulasi Credit</title>
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" rel='stylesheet' type='text/css' media='all'/>
+        <link href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css' rel='stylesheet' type='text/css' media='all'/>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.8.0/css/bootstrap-datepicker3.min.css" rel="stylesheet" type="text/css" media="all">
+        <style>
+          .dt-body-right{
+            text-align: right;
+          }
+        </style>
+    </head>
+    <body>
+        <div class="row">
+          <div class="col-md-12">
+            <form style="margin-top: 30px;" id="form_credit">
+                <div class="form-group row">
+                    <label for="jenisPinjaman" class="col-md-3 col-form-label">Jenis Pinjaman</label>
+                    <div class="col-md-9">
+                        <input class="form-control" type="text" name="jenis" id="jenisPinjaman" value="Bunga Flat" readonly>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="pokokPinjaman" class="col-md-3 col-form-label">Pokok Pinjaman</label>
+                    <div class="col-md-9 input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">Rp</div>
+                        </div>
+                        <input type="text" class="form-control" name="pinjaman" id="pokokPinjaman" required>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="bungaPinjaman" class="col-md-3 col-form-label">Bunga Pinjaman</label>
+                    <div class="col-md-9">
+                        <select class="form-control" name="bunga" id="bungaPinjaman">
+                          <option value="1.4">1,4 % per bulan</option>
+                          <option value="1.5">1,5 % per bulan</option>
+                          <option value="1.6">1,6 % per bulan</option>
+                          <option value="1.7">1,7 % per bulan</option>
+                          <option value="1.8">1,8 % per bulan</option>
+                          <option value="1.9">1,9 % per bulan</option>
+                          <option value="2">2 % per bulan</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="jangkaWaktu" class="col-md-3 col-form-label">Jangka Waktu</label>
+                    <div class="col-md-9">
+                        <select class="form-control" id="jangkaWaktu">
+                          <option value="6">6 bulan</option>
+                          <option value="12">12 bulan</option>
+                          <option value="18">18 bulan</option>
+                          <option value="24">24 bulan</option>
+                          <option value="36">36 bulan</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary pull-right" id="submit">Hitung</button>
+            </form>
+          </div>
+
+          </div>
+
+          <div class="row" style="margin-top:3rem;">
+            <div class="col-md-12">
+              <table id="tableCredit" class="table table-striped table-bordered d-none" style="width:100%">
+                <thead>
+                  <th style="text-align:center;">Bulan</th>
+                  <th style="text-align:center;">Angsuran</th>
+                  <th style="text-align:center;">Cicilan Pokok</th>
+                  <th style="text-align:center;">Bunga</th>
+                  <th style="text-align:center;">Saldo</th>
+                </thead>
+                <tbody>
+                </tbody>
+              </table>
+            </div>
+          </div>
+    </body>
+    <script type="text/javascript" src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.3.1.js"></script>
+    <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.8.0/js/bootstrap-datepicker.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+    <script type="text/javascript">
+    jQuery(function($){
+      var data = [];
+
+      $(document).ready(function(){
+
+        $(document).bind("keyup", "#pokokPinjaman", function(){
+          let conv = conversionKeyup($("#pokokPinjaman").val());
+          $("#pokokPinjaman").val(conv);
+        });
+
+        $(document).on("submit", "#form_credit", function(e){
+          e.preventDefault();
+          $("#tableCredit").removeClass('d-none');
+
+          let bunga = $("#bungaPinjaman").val();
+          let jangka_waktu = $("#jangkaWaktu").val();
+          let pokok_pinjam = parseInt($("#pokokPinjaman").val().replace(/\./g,''));
+          let tanggal_cair = $("#tanggalCair").val();
+          let plafon = Math.round(countCredit(pokok_pinjam, jangka_waktu, bunga));
+          console.log("plafon", plafon);
+          let round = roundCredit(plafon);
+          console.log("round", round);
+
+          //push table
+          let bunga_cicilan = Math.round(pokok_pinjam * (bunga/100));
+          let cicil_pokok = (Math.ceil((pokok_pinjam / jangka_waktu) / 1000)) * 1000;
+          let cicil_angsur = (Math.ceil((cicil_pokok + bunga_cicilan)/1000)) * 1000;
+
+          let bp = [];
+          data = [];
+          let h = 0;
+          let s = 0;
+          let sc = 0;
+          let hc = 0;
+          for (var i = 0; i < jangka_waktu; i++) {
+            let dates = new Date();
+            s = s + cicil_pokok;
+            i = i + 0;
+            dates.setMonth(dates.getMonth() + i);
+            //sisa saldo pembayaran
+            sc = Math.round((parseInt(pokok_pinjam) - s) / 1000) * 1000;
+            /* ketika dihitung 1 tahun dengan bunga 2 persen, masih sisa 4 pada saldo.
+            solusinya dikurangan saja asumsi 1000 karane pasti hasilnya minus tinggal memberi max = 0 pada js. */
+            if(jangka_waktu == 12 && i == 11){
+              sc = sc - 1000;
+            }
+
+            data.push([
+                 moment(dates).format("YYYY-MM-DD"),
+                 conversion(cicil_angsur),
+                 conversion(cicil_pokok),
+                 conversion(bunga_cicilan),
+                 conversion(Math.max(0,sc))
+            ]);
+          }
+
+          //load data using datatable
+          let table = $('#tableCredit').DataTable( {
+               "bPaginate": false,
+               "bLengthChange": false,
+               "bFilter": true,
+               "bInfo": false,
+               "bAutoWidth": false,
+               "searching": false,
+               "data": data,
+               "columnDefs": [
+                   { "className": "dt-body-right",
+                     "targets": [1,2,3,4],
+                     "visible":true },
+                   { "className": "text-center",
+                     "targets": [0],
+                     "visible":true }
+                 ]
+           });
+
+           table.destroy();
+        });
+
+        let countCredit = function(c, jw, sb){
+            result = ((c * jw) / (1 + ((jw/100) * sb)));
+            return result;
+        }
+
+        let roundCredit = function rounding(credit){
+          let x = (Math.round(credit/100000)) * 100000;
+          return x;
+        }
+
+        let conversion = function (current){
+          let x = parseFloat(current);
+    			var parts = x.toString().split(".");
+    			parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    			return parts.join(".");
+        }
+
+        let conversionKeyup = function (current){
+          if(current == undefined || current == ""){
+              current = 0;
+          }
+
+          c = current.toString().replace(/(~|`|!|@|#|$|%|^|&|\*|\(|\)|{|}|\[|\]|;|:|\"|'|<|,|\.|>|\?|\/|\\|\||-|_|\+|=)/g,"")
+          let x = parseFloat(c);
+    			var parts = x.toString().split(".");
+    			parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    			return parts.join(".");
+        }
+
+      });
+    })
+    </script>
+</html>
